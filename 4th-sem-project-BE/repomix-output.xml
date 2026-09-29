@@ -1,0 +1,3536 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+api/admin/deleteUser.php
+api/admin/getDashboardStats.php
+api/admin/getUserExpenses.php
+api/admin/getUsers.php
+api/admin/resetPassword.php
+api/admin/updateUser.php
+api/analytics/getBalanceSheet.php
+api/analytics/getDailyTrend.php
+api/analytics/getExpensesByCateory.php
+api/analytics/getExpensesByDate.php
+api/analytics/getExpenseSummary.php
+api/analytics/getMonthlySummary.php
+api/auth/login.php
+api/auth/register.php
+api/budget/deleteBudget.php
+api/budget/getAllBudgets.php
+api/budget/getBudget.php
+api/budget/getCategoryBudgets.php
+api/budget/getYearlyPlan.php
+api/budget/setbudget.php
+api/budget/setCategoryBudget.php
+api/budget/setMonthlyPlan.php
+api/budget/updateBudget.php
+api/category/addCategory.php
+api/category/addSubCategory.php
+api/category/deleteCategory.php
+api/category/deleteSubCategory.php
+api/category/getCategories.php
+api/category/updateCategory.php
+api/category/updateSubCategory.php
+api/expense/addExpense.php
+api/expense/addRecurring.php
+api/expense/confirmFuture.php
+api/expense/deleteExpense.php
+api/expense/deleteFutureExpense.php
+api/expense/getAllExpenses.php
+api/expense/getDueExpenses.php
+api/expense/getExpense.php
+api/expense/getPendingExpenses.php
+api/expense/getRecentExpenses.php
+api/expense/processRecurring.php
+api/expense/updateExpense.php
+api/expense/updateFutureExpense.php
+api/family/getRequests.php
+api/family/getStudentDashboard.php
+api/family/getStudents.php
+api/family/linkStudent.php
+api/family/respondRequest.php
+api/family/unlinkParent.php
+api/family/unlinksStudent.php
+api/income/addIncome.php
+api/income/deleteIncome.php
+api/income/getAllIncomes.php
+api/income/getYearlyPlan.php
+api/income/setMonthlyPlan.php
+api/income/updateIncome.php
+api/user/changePassword.php
+api/user/getLogs.php
+api/user/getProfile.php
+api/user/updateProfile.php
+composer.json
+config/db.php
+index.php
+models/admin.php
+models/budget.php
+models/Category.php
+models/expense.php
+models/Family.php
+models/FutureExpense.php
+models/Income.php
+models/IncomePlan.php
+models/RecurringExpense.php
+models/TransactionLog.php
+models/user.php
+README.md
+uploads/bills/1773635566_Er (1).png
+utils/auth.php
+utils/mailer.php
+utils/response.php
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api/admin/deleteUser.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$admin = new Admin($conn);
+
+if (!$admin->isAdmin($userId)) sendResponse(false, "Unauthorized Access");
+
+if ($admin->deleteUser($data['id'])) {
+    sendResponse(true, "User deleted successfully");
+} else {
+    sendResponse(false, "Failed to delete user");
+}
+?>
+</file>
+
+<file path="api/admin/getDashboardStats.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$admin = new Admin($conn);
+
+if (!$admin->isAdmin($userId)) sendResponse(false, "Unauthorized Access");
+
+// Get filters from frontend
+$period = $_GET['period'] ?? 'Monthly';
+$month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+$year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+
+// Pass filters to the model methods
+$stats = $admin->getSystemStats($period, $month, $year);
+$pieData = $admin->getPieChartData($period, $month, $year); 
+
+sendResponse(true, "Dashboard data fetched", [
+    "stats" => $stats,
+    "pieData" => $pieData
+]);
+?>
+</file>
+
+<file path="api/admin/getUserExpenses.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$targetUserId = $_GET['user_id'] ?? 0;
+$admin = new Admin($conn);
+
+if (!$admin->isAdmin($userId)) sendResponse(false, "Unauthorized Access");
+if (!$targetUserId) sendResponse(false, "User ID required");
+
+$expenses = $admin->getUserExpenses($targetUserId);
+sendResponse(true, "User expenses fetched", $expenses);
+?>
+</file>
+
+<file path="api/admin/getUsers.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$admin = new Admin($conn);
+
+if (!$admin->isAdmin($userId)) sendResponse(false, "Unauthorized Access");
+
+$users = $admin->getAllUsers();
+sendResponse(true, "Users fetched successfully", $users);
+?>
+</file>
+
+<file path="api/admin/updateUser.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$admin = new Admin($conn);
+
+if (!$admin->isAdmin($userId)) sendResponse(false, "Unauthorized Access");
+
+if ($admin->updateUser($data['id'], $data['first_name'], $data['last_name'], $data['email'], $data['role'])) {
+    sendResponse(true, "User updated successfully");
+} else {
+    sendResponse(false, "Failed to update user");
+}
+?>
+</file>
+
+<file path="api/analytics/getBalanceSheet.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$period = $_GET['period'] ?? 'Monthly'; 
+
+$dateCondition = "";
+if (strcasecmp($period, 'Weekly') == 0) {
+    $dateCondition = "YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)";
+} elseif (strcasecmp($period, 'Yearly') == 0) {
+    $dateCondition = "YEAR(date) = YEAR(CURDATE())";
+} else {
+    $dateCondition = "MONTH(date) = MONTH(CURDATE()) AND YEAR(date) = YEAR(CURDATE())";
+}
+
+// 1. Get Itemized Income (By Source)
+$sqlInc = "SELECT source as name, SUM(amount) as amount FROM incomes WHERE user_id = ? AND $dateCondition GROUP BY source";
+$stmtInc = $conn->prepare($sqlInc);
+$stmtInc->bind_param("i", $userId);
+$stmtInc->execute();
+$incomeRows = $stmtInc->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// 2. Get Itemized Expenses (By Category)
+$sqlExp = "SELECT c.category_name as name, SUM(e.amount) as amount 
+           FROM expenses e 
+           JOIN categories c ON e.category_id = c.id 
+           WHERE e.user_id = ? AND $dateCondition 
+           GROUP BY c.category_name";
+$stmtExp = $conn->prepare($sqlExp);
+$stmtExp->bind_param("i", $userId);
+$stmtExp->execute();
+$expenseRows = $stmtExp->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// Calculate Totals
+$totalInc = array_sum(array_column($incomeRows, 'amount'));
+$totalExp = array_sum(array_column($expenseRows, 'amount'));
+
+echo json_encode([
+    "status" => true,
+    "incomeRows" => $incomeRows,
+    "expenseRows" => $expenseRows,
+    "summary" => [
+        "totalIncome" => $totalInc,
+        "totalExpense" => $totalExp,
+        "netBalance" => $totalInc - $totalExp
+    ]
+]);
+</file>
+
+<file path="api/analytics/getDailyTrend.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$month = $_GET['month'] ?? date('m');
+$year = $_GET['year'] ?? date('Y');
+
+$stmt = $conn->prepare("
+    SELECT 
+        DAY(date) as day, 
+        SUM(amount) as total 
+    FROM expenses 
+    WHERE user_id = ? 
+      AND MONTH(date) = ? 
+      AND YEAR(date) = ? 
+    GROUP BY day 
+    ORDER BY day ASC
+");
+
+$stmt->bind_param("isi", $userId, $month, $year);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $data[] = [
+        "day" => (string)$row['day'],
+        "amount" => (float)$row['total']
+    ];
+}
+
+echo json_encode([
+    "status" => true,
+    "data" => $data
+]);
+?>
+</file>
+
+<file path="api/budget/getYearlyPlan.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Budget.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$year = $_GET['year'] ?? date('Y');
+
+$budget = new Budget($conn);
+$data = $budget->getYearlyBreakdown($userId, $year);
+
+sendResponse(true, "Yearly plan fetched", $data);
+?>
+</file>
+
+<file path="api/category/updateSubCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$id = $data['id'] ?? 0;
+$name = trim($data['name'] ?? '');
+
+if (!$id || empty($name)) sendResponse(false, "Invalid input");
+
+$stmt = $conn->prepare("UPDATE sub_categories SET name = ? WHERE id = ? AND user_id = ?");
+$stmt->bind_param("sii", $name, $id, $userId);
+
+if ($stmt->execute() && $stmt->affected_rows > 0) {
+    sendResponse(true, "Sub-category updated");
+} else {
+    sendResponse(false, "Failed");
+}
+?>
+</file>
+
+<file path="api/expense/addRecurring.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/RecurringExpense.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$category_id = $data['category_id'] ?? 0;
+$sub_category_id = !empty($data['sub_category_id']) ? $data['sub_category_id'] : NULL;
+$amount = $data['amount'] ?? 0;
+$frequency = $data['frequency'] ?? 'Monthly';
+$start_date = $data['start_date'] ?? date('Y-m-d');
+$description = $data['description'] ?? '';
+$source = $data['source'] ?? 'Cash';
+
+if (!$category_id || !$amount || !$frequency) {
+    sendResponse(false, "Category, Amount, and Frequency are required.");
+}
+
+$recurring = new RecurringExpense($conn);
+$result = $recurring->add($userId, $category_id, $amount, $frequency, $start_date, $description, $sub_category_id, $source);
+
+if ($result) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "SET_RECURRING", "Set up $frequency recurring expense of NPR $amount");
+    
+    // Immediately process so it shows up if due today
+    $recurring->processDueExpenses($userId);
+
+    sendResponse(true, "Recurring expense set up successfully.");
+} else {
+    sendResponse(false, "Failed to set recurring expense.");
+}
+?>
+</file>
+
+<file path="api/expense/getDueExpenses.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/FutureExpense.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$future = new FutureExpense($conn);
+$data = $future->getDueExpenses($userId);
+
+sendResponse(true, "Fetched due expenses", $data);
+?>
+</file>
+
+<file path="api/expense/getPendingExpenses.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/FutureExpense.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$future = new FutureExpense($conn);
+$data = $future->getAllPending($userId);
+
+sendResponse(true, "Pending expenses fetched", $data);
+?>
+</file>
+
+<file path="api/expense/processRecurring.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/RecurringExpense.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$recurring = new RecurringExpense($conn);
+$count = $recurring->processDueExpenses($userId);
+
+sendResponse(true, "Processed recurring expenses", ["generated" => $count]);
+?>
+</file>
+
+<file path="api/family/getRequests.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate(); // The logged in student
+$family = new Family($conn);
+
+$requests = $family->getPendingRequests($userId);
+sendResponse(true, "Pending requests fetched", $requests);
+?>
+</file>
+
+<file path="api/family/getStudentDashboard.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$parentId = authenticate();
+$studentId = $_GET['student_id'] ?? 0;
+$period = $_GET['period'] ?? 'Monthly';
+$month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+$year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+
+$family = new Family($conn);
+
+// Security Check
+if (!$family->isLinked($parentId, $studentId)) {
+    sendResponse(false, "Unauthorized. You are not linked to this student.");
+}
+
+// Date Condition Logic
+$dateCondition = "";
+if (strcasecmp($period, 'Weekly') == 0) {
+    // Current week
+    $dateCondition = "YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)";
+} elseif (strcasecmp($period, 'Yearly') == 0) {
+    // Specific Year
+    $dateCondition = "YEAR(date) = $year";
+} else {
+    // Specific Month and Year
+    $dateCondition = "MONTH(date) = $month AND YEAR(date) = $year";
+}
+
+// 1. Fetch Total Spent
+$stmtSpent = $conn->prepare("SELECT SUM(amount) as total_spent FROM expenses WHERE user_id = ? AND $dateCondition");
+$stmtSpent->bind_param("i", $studentId);
+$stmtSpent->execute();
+$spent = $stmtSpent->get_result()->fetch_assoc()['total_spent'] ?? 0;
+
+// 2. Fetch Appropriate Budget Limit
+$stmtBudget = $conn->prepare("SELECT amount FROM budgets WHERE user_id = ? AND type = ? LIMIT 1");
+$stmtBudget->bind_param("is", $studentId, $period);
+$stmtBudget->execute();
+$budget = $stmtBudget->get_result()->fetch_assoc()['amount'] ?? 0;
+
+// 3. Fetch Category Breakdown
+$sqlCat = "SELECT c.category_name as name, SUM(e.amount) as value 
+           FROM expenses e 
+           JOIN categories c ON e.category_id = c.id 
+           WHERE e.user_id = ? AND $dateCondition
+           GROUP BY c.category_name";
+$stmtCat = $conn->prepare($sqlCat);
+$stmtCat->bind_param("i", $studentId);
+$stmtCat->execute();
+$categories = $stmtCat->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// 4. Fetch Transaction List
+$sqlList = "SELECT e.id, e.date, c.category_name, e.description, e.amount 
+            FROM expenses e 
+            JOIN categories c ON e.category_id = c.id 
+            WHERE e.user_id = ? AND $dateCondition 
+            ORDER BY e.date DESC, e.id DESC";
+$stmtList = $conn->prepare($sqlList);
+$stmtList->bind_param("i", $studentId);
+$stmtList->execute();
+$expenses = $stmtList->get_result()->fetch_all(MYSQLI_ASSOC);
+
+sendResponse(true, "Student data fetched", [
+    "stats" => [
+        "totalSpent" => (float)$spent,
+        "budget" => (float)$budget
+    ],
+    "categories" => $categories,
+    "expenses" => $expenses
+]);
+?>
+</file>
+
+<file path="api/family/getStudents.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate(); // The logged in parent
+$family = new Family($conn);
+
+// Verify user is a parent
+if (!$family->isParent($userId)) {
+    sendResponse(false, "Unauthorized. Only parents can view linked students.");
+}
+
+$students = $family->getLinkedStudents($userId);
+sendResponse(true, "Linked students fetched", $students);
+?>
+</file>
+
+<file path="api/family/linkStudent.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$studentEmail = filter_var(trim($data['student_email'] ?? ''), FILTER_SANITIZE_EMAIL);
+
+if (empty($studentEmail)) sendResponse(false, "Student email is required");
+
+$family = new Family($conn);
+
+// Verify user is a parent
+if (!$family->isParent($userId)) {
+    sendResponse(false, "Unauthorized. Only parents can link students.");
+}
+
+$result = $family->requestLink($userId, $studentEmail);
+sendResponse($result['success'], $result['message']);
+?>
+</file>
+
+<file path="api/family/respondRequest.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$linkId = $data['link_id'] ?? 0;
+$action = $data['action'] ?? ''; // 'ACCEPT' or 'REJECT'
+
+if (!$linkId || !in_array($action, ['ACCEPT', 'REJECT'])) {
+    sendResponse(false, "Invalid input");
+}
+
+$family = new Family($conn);
+if ($family->respondToRequest($userId, $linkId, $action)) {
+    sendResponse(true, "Request " . strtolower($action) . "ed successfully");
+} else {
+    sendResponse(false, "Failed to update request");
+}
+?>
+</file>
+
+<file path="api/family/unlinkParent.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate(); // The logged in student
+$data = json_decode(file_get_contents("php://input"), true);
+$parentId = $data['parent_id'] ?? 0;
+
+if (!$parentId) {
+    sendResponse(false, "Parent ID is required");
+}
+
+$family = new Family($conn);
+
+// Verify user is actually a student
+if ($family->isParent($userId)) {
+    sendResponse(false, "Unauthorized. Only students can use this endpoint.");
+}
+
+if ($family->unlinkParent($userId, $parentId)) {
+    sendResponse(true, "Parent successfully unlinked");
+} else {
+    sendResponse(false, "Failed to unlink parent");
+}
+?>
+</file>
+
+<file path="api/family/unlinksStudent.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Family.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate(); // The logged in parent
+$data = json_decode(file_get_contents("php://input"), true);
+$studentId = $data['student_id'] ?? 0;
+
+if (!$studentId) {
+    sendResponse(false, "Student ID is required");
+}
+
+$family = new Family($conn);
+
+// Verify user is actually a parent
+if (!$family->isParent($userId)) {
+    sendResponse(false, "Unauthorized. Only parents can unlink students.");
+}
+
+if ($family->unlinkStudent($userId, $studentId)) {
+    sendResponse(true, "Student successfully unlinked");
+} else {
+    sendResponse(false, "Failed to unlink student");
+}
+?>
+</file>
+
+<file path="api/income/getAllIncomes.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Income.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$startDate = $_GET['start_date'] ?? null;
+$endDate = $_GET['end_date'] ?? null;
+
+$income = new Income($conn);
+$data = $income->getAll($userId, $startDate, $endDate);
+
+sendResponse(true, "Incomes fetched", $data);
+?>
+</file>
+
+<file path="api/income/getYearlyPlan.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/IncomePlan.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$year = $_GET['year'] ?? date('Y');
+
+$plan = new IncomePlan($conn);
+$data = $plan->getYearlyBreakdown($userId, $year);
+
+sendResponse(true, "Yearly income plan fetched", $data);
+?>
+</file>
+
+<file path="api/user/getLogs.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$logger = new TransactionLog($conn);
+$data = $logger->getLogs($userId);
+
+sendResponse(true, "Logs fetched", $data);
+?>
+</file>
+
+<file path="composer.json">
+{
+    "require": {
+        "phpmailer/phpmailer": "^7.0"
+    }
+}
+</file>
+
+<file path="models/RecurringExpense.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class RecurringExpense {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    // Add a new recurring template
+    public function add($user_id, $category_id, $amount, $frequency, $start_date, $description, $sub_category_id, $source) {
+        $stmt = $this->conn->prepare("
+            INSERT INTO recurring_expenses 
+            (user_id, category_id, sub_category_id, amount, frequency, start_date, next_due_date, description, source, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
+        ");
+        
+        // Initial next_due_date is the start_date
+        $next_due = $start_date;
+        $sub_cat = !empty($sub_category_id) ? $sub_category_id : NULL;
+        
+        $stmt->bind_param("iiidsssss", $user_id, $category_id, $sub_cat, $amount, $frequency, $start_date, $next_due, $description, $source);
+        return $stmt->execute();
+    }
+
+    // The Engine: Checks for due items and generates future_expenses
+    public function processDueExpenses($user_id) {
+        // Look ahead 7 days to generate bills slightly in advance
+        $targetDate = date('Y-m-d', strtotime('+7 days'));
+        
+        // Find all active templates where next_due_date is <= 7 days from now
+        $stmt = $this->conn->prepare("SELECT * FROM recurring_expenses WHERE user_id = ? AND status = 'ACTIVE' AND next_due_date <= ?");
+        $stmt->bind_param("is", $user_id, $targetDate);
+        $stmt->execute();
+        $templates = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        
+        $count = 0;
+
+        foreach ($templates as $t) {
+            $nextDate = $t['next_due_date'];
+            
+            // Loop to generate bills up to the target date (handles missed months)
+            while ($nextDate <= $targetDate) {
+                
+                // A. Check if this specific future expense already exists (Prevent Duplicates)
+                // We check: Same User, Same Category, Same Amount, Same Date, Still Pending
+                $check = $this->conn->prepare("SELECT id FROM future_expenses WHERE user_id = ? AND category_id = ? AND amount = ? AND date = ? AND status = 'PENDING'");
+                $check->bind_param("iids", $user_id, $t['category_id'], $t['amount'], $nextDate);
+                $check->execute();
+                
+                if ($check->get_result()->num_rows == 0) {
+                    // It doesn't exist, so insert it
+                    $ins = $this->conn->prepare("
+                        INSERT INTO future_expenses (user_id, category_id, sub_category_id, amount, date, description, source, status) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                    ");
+                    
+                    // Append (Auto-Generated) to description
+                    $desc = $t['description'] . " (Recurring: " . $t['frequency'] . ")";
+                    $ins->bind_param("iiidsss", $user_id, $t['category_id'], $t['sub_category_id'], $t['amount'], $nextDate, $desc, $t['source']);
+                    $ins->execute();
+                    $count++;
+                }
+                
+                // B. Calculate NEXT due date based on frequency
+                $dateObj = new DateTime($nextDate);
+                if ($t['frequency'] === 'Weekly') {
+                    $dateObj->modify('+1 week');
+                } elseif ($t['frequency'] === 'Monthly') {
+                    $dateObj->modify('+1 month');
+                } elseif ($t['frequency'] === 'Yearly') {
+                    $dateObj->modify('+1 year');
+                }
+                $nextDate = $dateObj->format('Y-m-d');
+            }
+
+            // C. Update the template with the new future date so we don't process again
+            $upd = $this->conn->prepare("UPDATE recurring_expenses SET next_due_date = ? WHERE id = ?");
+            $upd->bind_param("si", $nextDate, $t['id']);
+            $upd->execute();
+        }
+
+        return $count; // Return how many items were generated
+    }
+}
+?>
+</file>
+
+<file path="models/TransactionLog.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class TransactionLog {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function log($userId, $action, $details) {
+        $stmt = $this->conn->prepare("INSERT INTO transaction_logs (user_id, action, details) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $userId, $action, $details);
+        return $stmt->execute();
+    }
+
+    public function getLogs($userId) {
+        $stmt = $this->conn->prepare("SELECT action, details, created_at FROM transaction_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+}
+?>
+</file>
+
+<file path="utils/auth.php">
+<?php
+require_once 'response.php';
+
+define('SECRET_KEY', 'my_super_secret_key_change_this');
+
+function generateToken($userId) {
+    $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+    $payload = json_encode(['user_id' => $userId, 'exp' => time() + (86400 * 7)]); // 7 Days
+    
+    $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+    $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+    
+    $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, SECRET_KEY, true);
+    $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+    
+    return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
+}
+
+function authenticate() {
+    $headers = apache_request_headers();
+    $authHeader = null;
+
+    if (isset($headers['Authorization'])) {
+        $authHeader = $headers['Authorization'];
+    } elseif (isset($headers['authorization'])) {
+        $authHeader = $headers['authorization'];
+    }
+
+    if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+        http_response_code(401);
+        sendResponse(false, "Unauthorized: No token provided");
+    }
+
+    $token = $matches[1];
+    $tokenParts = explode('.', $token);
+
+    if (count($tokenParts) != 3) {
+        http_response_code(401);
+        sendResponse(false, "Unauthorized: Invalid token format");
+    }
+
+    $header = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[0]));
+    $payload = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[1]));
+    $signatureProvided = $tokenParts[2];
+
+    // Verify Signature
+    $signature = hash_hmac('sha256', $tokenParts[0] . "." . $tokenParts[1], SECRET_KEY, true);
+    $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+    if (!hash_equals($base64UrlSignature, $signatureProvided)) {
+        http_response_code(401);
+        sendResponse(false, "Unauthorized: Invalid signature");
+    }
+
+    $data = json_decode($payload);
+    
+    if ($data->exp < time()) {
+        http_response_code(401);
+        sendResponse(false, "Unauthorized: Token expired");
+    }
+
+    return (int)$data->user_id;
+}
+?>
+</file>
+
+<file path="utils/mailer.php">
+<?php
+// Load Composer's autoloader
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+function sendEmail($toEmail, $toName, $subject, $htmlBody) {
+    $mail = new PHPMailer(true);
+
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';             // Gmail SMTP server
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'animeonepiece788@gmail.com';       // YOUR GMAIL ADDRESS
+        $mail->Password   = 'zlelifrvmnmqmtkv'; // YOUR APP PASSWORD (No spaces)
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+
+        // Recipients
+        $mail->setFrom('animeonepiece788@gmail.com', 'Expense Tracker Admin');
+        $mail->addAddress($toEmail, $toName);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body    = $htmlBody;
+        $mail->AltBody = strip_tags($htmlBody); // Plain text version for non-HTML clients
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+?>
+</file>
+
+<file path="api/admin/resetPassword.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Admin.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+require_once '../../utils/mailer.php'; 
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$admin = new Admin($conn);
+
+// Ensure the person making the request is an admin
+if (!$admin->isAdmin($userId)) {
+    sendResponse(false, "Unauthorized Access");
+}
+
+$targetUserId = $data['id'] ?? 0;
+
+if (!$targetUserId) {
+    sendResponse(false, "User ID is required.");
+}
+
+// --- 1. GENERATE RANDOM PASSWORD ---
+// Creates a random 10-character password using letters, numbers, and special characters
+$characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$!%*';
+$newPassword = substr(str_shuffle($characters), 0, 10);
+
+// --- 2. FETCH TARGET USER'S DETAILS ---
+$stmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+$stmt->bind_param("i", $targetUserId);
+$stmt->execute();
+$targetUser = $stmt->get_result()->fetch_assoc();
+
+if (!$targetUser) {
+    sendResponse(false, "User not found.");
+}
+
+// --- 3. RESET THE PASSWORD IN DATABASE ---
+// The resetPassword method handles hashing the $newPassword before saving it
+if ($admin->resetPassword($targetUserId, $newPassword)) {
+    
+    // --- 4. SEND EMAIL NOTIFICATION WITH NEW PASSWORD ---
+    $fullName = $targetUser['first_name'] . ' ' . $targetUser['last_name'];
+    $subject = "Security Alert: Administrator Reset Your Password";
+    
+    $body = "
+        <div style='font-family: Arial, sans-serif; color: #333;'>
+            <h2>Hello {$targetUser['first_name']},</h2>
+            <p>An administrator has reset the password for your Expense Tracker account (<b>{$targetUser['email']}</b>).</p>
+            <p>Your new temporary password is: <b style='background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px; letter-spacing: 1px;'>{$newPassword}</b></p>
+            <p>Please log in using this new password and change it immediately from your Profile settings for security reasons.</p>
+            <br>
+            <p>Best Regards,<br>Expense Tracker Admin Team</p>
+        </div>
+    ";
+    
+    sendEmail($targetUser['email'], $fullName, $subject, $body);
+
+    sendResponse(true, "Random password generated and emailed to the user successfully.");
+} else {
+    sendResponse(false, "Failed to reset password.");
+}
+?>
+</file>
+
+<file path="api/analytics/getExpensesByDate.php">
+<?php
+header("Content-Type: application/json");
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$month = $_GET['month'] ?? date('m');
+$year = $_GET['year'] ?? date('Y');
+
+$stmtTotal = $conn->prepare("SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND MONTH(date)=? AND YEAR(date)=?");
+$stmtTotal->bind_param("isi", $userId, $month, $year);
+$stmtTotal->execute();
+$total = $stmtTotal->get_result()->fetch_assoc()['total'] ?? 0;
+
+$stmtCat = $conn->prepare("
+    SELECT c.category_name as category, SUM(e.amount) as total 
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    WHERE e.user_id=? AND MONTH(e.date)=? AND YEAR(e.date)=? 
+    GROUP BY c.category_name
+");
+$stmtCat->bind_param("isi", $userId, $month, $year);
+$stmtCat->execute();
+$resultCat = $stmtCat->get_result();
+
+$categories = [];
+while ($row = $resultCat->fetch_assoc()) {
+    $categories[] = $row;
+}
+
+echo json_encode([
+    "status" => true,
+    "totalExpense" => $total,
+    "byCategory" => $categories
+]);
+?>
+</file>
+
+<file path="api/analytics/getMonthlySummary.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$month = $_GET['month'] ?? date('m');
+$year = $_GET['year'] ?? date('Y');
+
+$stmtTotal = $conn->prepare("SELECT SUM(amount) as total FROM expenses WHERE user_id=? AND MONTH(date)=? AND YEAR(date)=?");
+$stmtTotal->bind_param("isi", $userId, $month, $year);
+$stmtTotal->execute();
+$total = (float)$stmtTotal->get_result()->fetch_assoc()['total'] ?? 0;
+
+$stmtCat = $conn->prepare("
+    SELECT c.category_name as category, SUM(e.amount) as total 
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    WHERE e.user_id=? AND MONTH(e.date)=? AND YEAR(e.date)=? 
+    GROUP BY c.category_name
+");
+$stmtCat->bind_param("isi", $userId, $month, $year);
+$stmtCat->execute();
+$resultCat = $stmtCat->get_result();
+
+$categories = [];
+while ($row = $resultCat->fetch_assoc()) {
+    $categories[] = $row;
+}
+
+echo json_encode([
+    "status" => true,
+    "totalExpense" => $total,
+    "byCategory" => $categories
+]);
+?>
+</file>
+
+<file path="api/budget/deleteBudget.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; // Add this
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+if (!$id) sendResponse(false, "Invalid ID");
+
+$stmt = $conn->prepare("DELETE FROM budgets WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $id, $userId);
+
+if ($stmt->execute()) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_BUDGET", "Deleted a budget record (ID: $id)");
+
+    sendResponse(true, "Budget deleted successfully");
+} else {
+    sendResponse(false, "Failed to delete");
+}
+?>
+</file>
+
+<file path="api/budget/getAllBudgets.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$stmt = $conn->prepare("SELECT id, type, amount, created_at FROM budgets WHERE user_id = ? ORDER BY created_at DESC");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$budgets = [];
+while ($row = $result->fetch_assoc()) {
+    $budgets[] = $row;
+}
+
+sendResponse(true, "Budgets fetched", $budgets);
+?>
+</file>
+
+<file path="api/budget/getCategoryBudgets.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$stmt = $conn->prepare("
+    SELECT c.category_name, cb.category_id, cb.amount 
+    FROM category_budgets cb
+    JOIN categories c ON cb.category_id = c.id
+    WHERE cb.user_id = ?
+");
+
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $data[$row['category_name']] = (float)$row['amount'];
+}
+
+sendResponse(true, "Fetched successfully", $data);
+?>
+</file>
+
+<file path="api/category/addSubCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Category.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$categoryId = filter_var($data['category_id'] ?? 0, FILTER_VALIDATE_INT);
+$name = trim($data['name'] ?? '');
+
+if (!$categoryId || empty($name)) {
+    sendResponse(false, "Category ID and Name required");
+}
+
+$category = new Category($conn);
+$result = $category->addSubCategory($userId, $categoryId, $name);
+
+if ($result['success']) {
+    sendResponse(true, "Sub-category added", ["id" => $result['id'], "name" => $name]);
+} else {
+    // Pass the specific error message
+    sendResponse(false, $result['message']);
+}
+?>
+</file>
+
+<file path="api/category/deleteSubCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+$stmt = $conn->prepare("DELETE FROM sub_categories WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $id, $userId);
+
+if ($stmt->execute() && $stmt->affected_rows > 0) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_SUBCATEGORY", "Removed a sub-category (ID: $id)");
+    sendResponse(true, "Sub-category deleted");
+} else {
+    sendResponse(false, "Failed");
+}
+?>
+</file>
+
+<file path="api/expense/confirmFuture.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/FutureExpense.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+$future = new FutureExpense($conn);
+if ($future->confirm($id, $userId, $data)) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "CONFIRMED_EXPENSE", "Moved scheduled item ID $id to actual expenses");
+    sendResponse(true, "Transaction confirmed.");
+} else { sendResponse(false, "Confirmation failed."); }
+</file>
+
+<file path="api/expense/deleteFutureExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+if (!$id) sendResponse(false, "Invalid ID");
+
+$stmt = $conn->prepare("DELETE FROM future_expenses WHERE id = ? AND user_id = ? AND status = 'PENDING'");
+$stmt->bind_param("ii", $id, $userId);
+
+if ($stmt->execute()) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_SCHEDULE", "Cancelled a scheduled expense (ID: $id)");
+    sendResponse(true, "Scheduled expense cancelled");
+} else {
+    sendResponse(false, "Failed to delete");
+}
+?>
+</file>
+
+<file path="api/expense/getRecentExpenses.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$stmt = $conn->prepare("
+    SELECT e.id, e.amount, e.date, e.description, c.category_name 
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    WHERE e.user_id = ? 
+    ORDER BY e.date DESC, e.id DESC 
+    LIMIT 5
+");
+
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $data[] = $row;
+}
+
+echo json_encode(["status" => true, "data" => $data]);
+?>
+</file>
+
+<file path="api/user/updateProfile.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; // Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$first = trim($data['first_name'] ?? '');
+$last = trim($data['last_name'] ?? '');
+$mid = trim($data['middle_name'] ?? '');
+$bank = trim($data['bank_name'] ?? '');
+$acc = trim($data['bank_account_no'] ?? '');
+
+if (empty($first) || empty($last)) sendResponse(false, "Name is required");
+
+$stmt = $conn->prepare("UPDATE users SET first_name=?, middle_name=?, last_name=?, bank_name=?, bank_account_no=? WHERE id=?");
+$stmt->bind_param("sssssi", $first, $mid, $last, $bank, $acc, $userId);
+
+if ($stmt->execute()) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_PROFILE", "Updated personal info");
+
+    sendResponse(true, "Profile updated successfully");
+} else {
+    sendResponse(false, "Failed to update");
+}
+?>
+</file>
+
+<file path="config/db.php">
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Content-Type: application/json; charset=UTF-8");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+$host = "localhost";
+$username = "root";
+$password = "";     
+$db_name = "expense_tracker";
+
+$conn = new mysqli($host, $username, $password, $db_name);
+
+if ($conn->connect_error) {
+    die(json_encode([
+        "success" => false, 
+        "message" => "Database connection failed: " . $conn->connect_error
+    ]));
+}
+?>
+</file>
+
+<file path="models/admin.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Admin {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function isAdmin($userId) {
+        $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        return $user && $user['role'] === 'admin';
+    }
+
+    // Helper to generate dynamic date condition
+    private function getDateCondition($period, $month, $year, $dateCol = 'date') {
+        if (strcasecmp($period, 'Weekly') == 0) {
+            return "YEARWEEK($dateCol, 1) = YEARWEEK(CURDATE(), 1)";
+        } elseif (strcasecmp($period, 'Yearly') == 0) {
+            return "YEAR($dateCol) = " . intval($year);
+        } else {
+            return "MONTH($dateCol) = " . intval($month) . " AND YEAR($dateCol) = " . intval($year);
+        }
+    }
+
+    public function getAllUsers() {
+        $stmt = $this->conn->prepare("
+            SELECT 
+                u.id, 
+                u.first_name, 
+                u.last_name, 
+                u.email, 
+                u.role, 
+                u.created_at,
+                (
+                    SELECT CONCAT(p.first_name, ' ', p.last_name) 
+                    FROM family_links fl 
+                    JOIN users p ON fl.parent_id = p.id 
+                    WHERE fl.student_id = u.id AND fl.status = 'ACTIVE' 
+                    LIMIT 1
+                ) as parent_name
+            FROM users u 
+            WHERE u.role != 'admin' 
+            ORDER BY u.created_at DESC
+        ");
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function updateUser($id, $first_name, $last_name, $email, $role) {
+        $stmt = $this->conn->prepare("UPDATE users SET first_name=?, last_name=?, email=?, role=? WHERE id=?");
+        $stmt->bind_param("ssssi", $first_name, $last_name, $email, $role, $id);
+        return $stmt->execute();
+    }
+
+    public function resetPassword($id, $newPassword) {
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $this->conn->prepare("UPDATE users SET password=? WHERE id=?");
+        $stmt->bind_param("si", $hash, $id);
+        return $stmt->execute();
+    }
+
+    public function deleteUser($id) {
+        $stmt = $this->conn->prepare("DELETE FROM users WHERE id=?");
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    // Apply filters to totals
+    public function getSystemStats($period = 'Monthly', $month = null, $year = null) {
+        $stats = ["total_income" => 0, "total_expense" => 0, "total_budget" => 0];
+
+        $condDate = $this->getDateCondition($period, $month, $year, 'date');
+
+        // Get Income
+        $inc = $this->conn->query("SELECT SUM(amount) as total FROM incomes WHERE $condDate")->fetch_assoc();
+        $stats['total_income'] = $inc['total'] ?? 0;
+
+        // Get Expense
+        $exp = $this->conn->query("SELECT SUM(amount) as total FROM expenses WHERE $condDate")->fetch_assoc();
+        $stats['total_expense'] = $exp['total'] ?? 0;
+
+        // FIXED BUDGET LOGIC: Pull from 'monthly_budgets' based on the selected period
+        if (strcasecmp($period, 'Monthly') == 0) {
+            $sql = "SELECT SUM(amount) as total FROM monthly_budgets WHERE month = " . intval($month) . " AND year = " . intval($year);
+            $bud = $this->conn->query($sql)->fetch_assoc();
+            $stats['total_budget'] = $bud['total'] ?? 0;
+        } elseif (strcasecmp($period, 'Yearly') == 0) {
+            $sql = "SELECT SUM(amount) as total FROM monthly_budgets WHERE year = " . intval($year);
+            $bud = $this->conn->query($sql)->fetch_assoc();
+            $stats['total_budget'] = $bud['total'] ?? 0;
+        } else {
+            // Fallback for weekly
+            $condCreated = $this->getDateCondition($period, $month, $year, 'created_at');
+            $bud = $this->conn->query("SELECT SUM(amount) as total FROM budgets WHERE $condCreated")->fetch_assoc();
+            $stats['total_budget'] = $bud['total'] ?? 0;
+        }
+
+        return $stats;
+    }
+
+    // Apply filters to pie charts
+    public function getPieChartData($period = 'Monthly', $month = null, $year = null) {
+        $data = ["income" => [], "expense" => [], "budget" => []];
+
+        $condDateInc = $this->getDateCondition($period, $month, $year, 'date');
+        $condDateExp = $this->getDateCondition($period, $month, $year, 'e.date');
+
+        // Fetch Incomes
+        $inc = $this->conn->query("SELECT source as name, SUM(amount) as value FROM incomes WHERE $condDateInc GROUP BY source");
+        while ($row = $inc->fetch_assoc()) { 
+            if ($row['value'] > 0) $data['income'][] = ["name" => $row['name'], "value" => (float)$row['value']]; 
+        }
+
+        // Fetch Expenses
+        $exp = $this->conn->query("SELECT c.category_name as name, SUM(e.amount) as value FROM expenses e JOIN categories c ON e.category_id = c.id WHERE $condDateExp GROUP BY c.category_name");
+        while ($row = $exp->fetch_assoc()) { 
+            if ($row['value'] > 0) $data['expense'][] = ["name" => $row['name'], "value" => (float)$row['value']]; 
+        }
+
+        // FIXED BUDGET PIE CHART LOGIC
+        if (strcasecmp($period, 'Monthly') == 0) {
+            $sql = "SELECT 'Monthly Plans' as name, SUM(amount) as value FROM monthly_budgets WHERE month = " . intval($month) . " AND year = " . intval($year);
+            $bud = $this->conn->query($sql);
+            while ($row = $bud->fetch_assoc()) { 
+                if ($row['value'] > 0) $data['budget'][] = ["name" => $row['name'], "value" => (float)$row['value']]; 
+            }
+        } elseif (strcasecmp($period, 'Yearly') == 0) {
+            $sql = "SELECT 'Yearly Plans' as name, SUM(amount) as value FROM monthly_budgets WHERE year = " . intval($year);
+            $bud = $this->conn->query($sql);
+            while ($row = $bud->fetch_assoc()) { 
+                if ($row['value'] > 0) $data['budget'][] = ["name" => $row['name'], "value" => (float)$row['value']]; 
+            }
+        } else {
+             // Fallback for weekly
+            $condCreated = $this->getDateCondition($period, $month, $year, 'created_at');
+            $bud = $this->conn->query("SELECT type as name, SUM(amount) as value FROM budgets WHERE $condCreated GROUP BY type");
+            while ($row = $bud->fetch_assoc()) { 
+                if ($row['value'] > 0) $data['budget'][] = ["name" => $row['name'], "value" => (float)$row['value']]; 
+            }
+        }
+
+        return $data;
+    }
+
+    public function getUserExpenses($targetUserId) {
+        $stmt = $this->conn->prepare("
+            SELECT e.id, e.amount, e.date, e.description, c.category_name 
+            FROM expenses e
+            JOIN categories c ON e.category_id = c.id
+            WHERE e.user_id = ? 
+            ORDER BY e.date DESC
+        ");
+        $stmt->bind_param("i", $targetUserId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+}
+?>
+</file>
+
+<file path="models/IncomePlan.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class IncomePlan {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    // Set Monthly Plan (Amount Only)
+    public function setMonthlyPlan($user_id, $year, $month, $amount) {
+        // We set weeks to 0 since we are only tracking the monthly total
+        $stmt = $this->conn->prepare("
+            INSERT INTO monthly_income_plans (user_id, year, month, amount, week1, week2, week3, week4) 
+            VALUES (?, ?, ?, ?, 0, 0, 0, 0) 
+            ON DUPLICATE KEY UPDATE 
+                amount = VALUES(amount),
+                week1 = 0, week2 = 0, week3 = 0, week4 = 0
+        ");
+        $stmt->bind_param("iiid", $user_id, $year, $month, $amount);
+        
+        if ($stmt->execute()) {
+            return ["success" => true, "message" => "Income plan updated"];
+        }
+        return ["success" => false, "message" => "Database error"];
+    }
+
+    // Get Yearly Data
+    public function getYearlyBreakdown($user_id, $year) {
+        $stmt = $this->conn->prepare("SELECT month, amount FROM monthly_income_plans WHERE user_id = ? AND year = ?");
+        $stmt->bind_param("ii", $user_id, $year);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $data = [];
+        while($row = $result->fetch_assoc()) {
+            $data[$row['month']] = (float)$row['amount'];
+        }
+        
+        // Fill missing months with 0
+        $finalData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $finalData[] = [
+                "month" => $i,
+                "amount" => $data[$i] ?? 0
+            ];
+        }
+        
+        return $finalData;
+    }
+}
+?>
+</file>
+
+<file path="utils/response.php">
+<?php
+function sendResponse($success, $message, $data = null) {
+    echo json_encode([
+        'success' => $success,
+        'message' => $message,
+        'data' => $data
+    ]);
+    exit;
+}
+?>
+</file>
+
+<file path="api/analytics/getExpensesByCateory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$stmt = $conn->prepare("
+    SELECT c.category_name as category, SUM(e.amount) as total 
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    WHERE e.user_id = ? 
+    GROUP BY c.category_name
+");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $data[] = $row;
+}
+
+echo json_encode(["status" => true, "data" => $data]);
+?>
+</file>
+
+<file path="api/analytics/getExpenseSummary.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$period = $_GET['period'] ?? 'Monthly'; 
+
+// Get requested Month and Year, default to current if not provided
+$reqMonth = isset($_GET['month']) ? intval($_GET['month']) : intval(date('m'));
+$reqYear = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
+
+$dateCondition = "";
+
+if (strcasecmp($period, 'Weekly') == 0) {
+    // For Weekly, we stick to "Current Week" logic for simplicity, 
+    // or you could implement specific week selection later.
+    $dateCondition = "YEARWEEK(date, 1) = YEARWEEK(CURDATE(), 1)";
+} elseif (strcasecmp($period, 'Yearly') == 0) {
+    // Filter by specific Year
+    $dateCondition = "YEAR(date) = $reqYear";
+} else {
+    // Default to Monthly: Filter by specific Month AND Year
+    $dateCondition = "MONTH(date) = $reqMonth AND YEAR(date) = $reqYear";
+}
+
+$sqlTotal = "SELECT SUM(amount) as total FROM expenses WHERE user_id = ? AND $dateCondition";
+$stmtTotal = $conn->prepare($sqlTotal);
+$stmtTotal->bind_param("i", $userId);
+$stmtTotal->execute();
+$total = (float)$stmtTotal->get_result()->fetch_assoc()['total'] ?? 0;
+
+$sqlCat = "
+    SELECT c.category_name as category, SUM(e.amount) as total 
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    WHERE e.user_id = ? AND $dateCondition
+    GROUP BY c.category_name
+";
+$stmtCat = $conn->prepare($sqlCat);
+$stmtCat->bind_param("i", $userId);
+$stmtCat->execute();
+$resultCat = $stmtCat->get_result();
+
+$categories = [];
+while ($row = $resultCat->fetch_assoc()) {
+    $categories[] = $row;
+}
+
+echo json_encode([
+    "status" => true,
+    "totalExpense" => $total,
+    "byCategory" => $categories,
+    "period" => $period,
+    "filter" => [
+        "month" => $reqMonth,
+        "year" => $reqYear
+    ]
+]);
+?>
+</file>
+
+<file path="api/budget/setCategoryBudget.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; 
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$categoryId = filter_var($data['category_id'] ?? 0, FILTER_VALIDATE_INT);
+$amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
+
+if (!$categoryId || $amount <= 0) {
+    sendResponse(false, "Invalid input");
+}
+
+// Logic to check if exists or insert...
+$check = $conn->prepare("SELECT id FROM category_budgets WHERE user_id = ? AND category_id = ?");
+$check->bind_param("ii", $userId, $categoryId);
+$check->execute();
+$result = $check->get_result();
+
+if ($result->num_rows > 0) {
+    $stmt = $conn->prepare("UPDATE category_budgets SET amount = ? WHERE user_id = ? AND category_id = ?");
+    $stmt->bind_param("dii", $amount, $userId, $categoryId);
+} else {
+    $stmt = $conn->prepare("INSERT INTO category_budgets (user_id, category_id, amount) VALUES (?, ?, ?)");
+    $stmt->bind_param("iid", $userId, $categoryId, $amount);
+}
+
+if ($stmt->execute()) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "SET_CATEGORY_LIMIT", "Set category ID $categoryId limit to NPR $amount");
+
+    sendResponse(true, "Category budget set successfully");
+} else {
+    sendResponse(false, "Failed to set budget");
+}
+?>
+</file>
+
+<file path="api/budget/setMonthlyPlan.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Budget.php';
+require_once '../../models/TransactionLog.php'; // Add this
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$year = $data['year'] ?? date('Y');
+$month = $data['month'] ?? 0;
+$w1 = filter_var($data['week1'] ?? 0, FILTER_VALIDATE_FLOAT);
+$w2 = filter_var($data['week2'] ?? 0, FILTER_VALIDATE_FLOAT);
+$w3 = filter_var($data['week3'] ?? 0, FILTER_VALIDATE_FLOAT);
+$w4 = filter_var($data['week4'] ?? 0, FILTER_VALIDATE_FLOAT);
+
+$monthName = date("F", mktime(0, 0, 0, $month, 10));
+
+if ($month < 1 || $month > 12) {
+    sendResponse(false, "Invalid month");
+}
+
+$budget = new Budget($conn);
+$result = $budget->setMonthlyAmount($userId, $year, $month, $w1, $w2, $w3, $w4);
+
+if ($result['success']) {
+    // LOGGING
+    $total = $w1 + $w2 + $w3 + $w4;
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "PLANNED_BUDGET", "Set budget for $monthName $year to NPR $total");
+    
+    sendResponse(true, $result['message']);
+} else {
+    sendResponse(false, $result['message']);
+}
+?>
+</file>
+
+<file path="api/category/deleteCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; // Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+$stmt = $conn->prepare("DELETE FROM categories WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $id, $userId);
+
+if ($stmt->execute() && $stmt->affected_rows > 0) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_CATEGORY", "Deleted category ID: $id");
+
+    sendResponse(true, "Category deleted");
+} else {
+    sendResponse(false, "Failed (You cannot delete system categories)");
+}
+?>
+</file>
+
+<file path="api/category/getCategories.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Category.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$category = new Category($conn);
+
+$data = $category->getAll($userId);
+
+if ($data) {
+    sendResponse(true, "Categories fetched", $data);
+} else {
+    sendResponse(true, "No categories found", []);
+}
+?>
+</file>
+
+<file path="api/category/updateCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$id = $data['id'] ?? 0;
+$name = trim($data['name'] ?? '');
+
+if (!$id || empty($name)) sendResponse(false, "Invalid input");
+
+$stmt = $conn->prepare("UPDATE categories SET category_name = ? WHERE id = ? AND user_id = ?");
+$stmt->bind_param("sii", $name, $id, $userId);
+
+if ($stmt->execute() && $stmt->affected_rows > 0) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_CATEGORY", "Renamed category to: $name");
+    sendResponse(true, "Category updated");
+} else {
+    sendResponse(false, "Failed (System categories cannot be edited)");
+}
+?>
+</file>
+
+<file path="api/expense/getExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Expense.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$expense = new Expense($conn);
+$data = $expense->getAll($userId);
+
+sendResponse(true, "Expenses fetched successfully", $data);
+?>
+</file>
+
+<file path="api/expense/updateFutureExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/FutureExpense.php';
+require_once '../../models/RecurringExpense.php'; // Import Recurring Model
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$id = $data['id'] ?? 0;
+$category_id = $data['category_id'] ?? 0;
+$amount = $data['amount'] ?? 0;
+$date = $data['date'] ?? '';
+$description = $data['description'] ?? '';
+
+// Check for recurring conversion flags
+$create_recurring = $data['create_recurring_rule'] ?? false;
+$frequency = $data['frequency'] ?? 'Monthly';
+
+if (!$id || !$amount || !$date) {
+    sendResponse(false, "Required fields missing.");
+}
+
+$future = new FutureExpense($conn);
+
+// 1. Update the current item first
+if ($future->update($id, $userId, $category_id, $amount, $date, $description)) {
+    
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_SCHEDULE", "Modified scheduled expense ID: $id");
+
+    // 2. If user requested to make it recurring
+    if ($create_recurring) {
+        $recurring = new RecurringExpense($conn);
+        
+        // Use default sub_category as NULL for now (or fetch from DB if needed)
+        // We use the 'date' as the 'start_date' for the recursion
+        $result = $recurring->add(
+            $userId, 
+            $category_id, 
+            $amount, 
+            $frequency, 
+            $date, 
+            $description, 
+            NULL, 
+            'Cash' // Defaulting source to Cash, or fetch from existing if critical
+        );
+
+        if ($result) {
+            $logger->log($userId, "SET_RECURRING", "Converted Future Expense #$id to $frequency Recurring");
+            sendResponse(true, "Updated & Converted to Recurring Series.");
+        } else {
+            sendResponse(true, "Expense Updated, but failed to create recurring rule.");
+        }
+    } else {
+        sendResponse(true, "Scheduled expense updated.");
+    }
+
+} else {
+    sendResponse(false, "No changes made or update failed.");
+}
+?>
+</file>
+
+<file path="api/income/addIncome.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Income.php';
+require_once '../../models/TransactionLog.php'; // 1. Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$source = trim($data['source'] ?? '');
+$amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
+$date = $data['date'] ?? '';
+
+if (empty($source) || !$amount) {
+    sendResponse(false, "Source and Amount are required");
+}
+
+$income = new Income($conn);
+$result = $income->add($userId, $source, $amount, $date, $data['description'] ?? '');
+
+if ($result['success']) {
+    // 2. RECORD TO ACTIVITY LOG
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "INCOME_RECEIVED", "Received NPR $amount from $source");
+
+    sendResponse(true, "Income added successfully");
+} else {
+    sendResponse(false, "Failed to add income");
+}
+</file>
+
+<file path="api/income/deleteIncome.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Income.php';
+require_once '../../models/TransactionLog.php'; 
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$id = $data['id'] ?? 0;
+
+if (!$id) sendResponse(false, "ID required");
+
+$income = new Income($conn);
+if ($income->delete($id, $userId)) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_INCOME", "Deleted income record (ID: $id)");
+    sendResponse(true, "Income deleted successfully");
+} else {
+    sendResponse(false, "Failed to delete");
+}
+?>
+</file>
+
+<file path="api/income/setMonthlyPlan.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/IncomePlan.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$year = $data['year']; $month = $data['month']; $amount = $data['amount'];
+
+$plan = new IncomePlan($conn);
+$result = $plan->setMonthlyPlan($userId, $year, $month, $amount);
+
+if ($result['success']) {
+    $logger = new TransactionLog($conn);
+    $monthName = date("F", mktime(0, 0, 0, $month, 10));
+    $logger->log($userId, "INCOME_PLAN_UPDATED", "Set income goal for $monthName $year to NPR $amount");
+}
+sendResponse($result['success'], $result['message']);
+</file>
+
+<file path="api/income/updateIncome.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Income.php';
+require_once '../../models/TransactionLog.php'; 
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$id = $data['id'] ?? 0;
+$source = $data['source'] ?? '';
+$amount = $data['amount'] ?? 0;
+$date = $data['date'] ?? '';
+$description = $data['description'] ?? '';
+
+if (!$id || !$amount) sendResponse(false, "Invalid input");
+
+$income = new Income($conn);
+if ($income->update($id, $userId, $source, $amount, $date, $description)) {
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_INCOME", "Updated income record: $source to NPR $amount");
+    sendResponse(true, "Income updated");
+} else {
+    sendResponse(false, "Update failed");
+}
+?>
+</file>
+
+<file path="api/user/getProfile.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+// 1. Fetch main user details including role
+$stmt = $conn->prepare("SELECT id, first_name, middle_name, last_name, email, role, bank_name, bank_account_no FROM users WHERE id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+
+if ($user) {
+    // 2. If the user is a student, fetch their parent linking status
+    if ($user['role'] === 'student') {
+        $linkStmt = $conn->prepare("
+            SELECT u.id AS parent_id, u.first_name, u.last_name, u.email, fl.status 
+            FROM family_links fl 
+            JOIN users u ON fl.parent_id = u.id 
+            WHERE fl.student_id = ?
+        ");
+        $linkStmt->bind_param("i", $userId);
+        $linkStmt->execute();
+        
+        $links = $linkStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $user['family_links'] = $links; 
+    }
+
+    sendResponse(true, "Profile fetched", $user);
+} else {
+    sendResponse(false, "User not found");
+}
+?>
+</file>
+
+<file path="index.php">
+<?php
+header("Content-Type: application/json");
+echo json_encode([
+    "status" => true,
+    "version" => "1.0.0",
+    "message" => "Expense Tracker Backend API is running",
+    "available_routes" => [
+        "Auth" => [
+            ["method" => "POST", "path" => "/api/auth/register.php", "auth_required" => false],
+            ["method" => "POST", "path" => "/api/auth/login.php", "auth_required" => false]
+        ],
+        "Expense" => [
+            ["method" => "POST", "path" => "/api/expense/addExpense.php", "auth_required" => true],
+            ["method" => "GET", "path" => "/api/expense/getExpenses.php", "auth_required" => true],
+            ["method" => "PUT", "path" => "/api/expense/updateExpense.php", "auth_required" => true],
+            ["method" => "DELETE", "path" => "/api/expense/deleteExpense.php", "auth_required" => true]
+        ],
+        "Budget" => [
+            ["method" => "POST", "path" => "/api/budget/setBudget.php", "auth_required" => true],
+            ["method" => "GET", "path" => "/api/budget/getBudget.php", "auth_required" => true]
+        ],
+        "Analytics" => [
+            ["method" => "GET", "path" => "/api/analytics/getExpensesByCategory.php", "auth_required" => true],
+            ["method" => "GET", "path" => "/api/analytics/getExpensesByDate.php", "auth_required" => true],
+            ["method" => "GET", "path" => "/api/analytics/getMonthlySummary.php", "auth_required" => true]
+        ]
+    ]
+]);
+</file>
+
+<file path="models/Category.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Category {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function getAll($userId) {
+        // Added 'user_id' to select to fix the Edit/Delete button issue
+        $sqlCat = "SELECT id, user_id, category_name FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY category_name ASC";
+        $stmt = $this->conn->prepare($sqlCat);
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $cats = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $sqlSub = "SELECT id, user_id, category_id, name FROM sub_categories WHERE user_id IS NULL OR user_id = ? ORDER BY name ASC";
+        $stmtSub = $this->conn->prepare($sqlSub);
+        $stmtSub->bind_param("i", $userId);
+        $stmtSub->execute();
+        $subs = $stmtSub->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $finalCategories = [];
+        foreach ($cats as $cat) {
+            $catId = $cat['id'];
+            $cat['sub_categories'] = [];
+
+            foreach ($subs as $sub) {
+                if ($sub['category_id'] == $catId) {
+                    $cat['sub_categories'][] = $sub;
+                }
+            }
+            $finalCategories[] = $cat;
+        }
+
+        return $finalCategories;
+    }
+
+    public function add($userId, $name) {
+        // 1. Check for Duplicate (Case-Insensitive)
+        // Checks against User's own categories AND System categories (user_id IS NULL)
+        $check = $this->conn->prepare("SELECT id FROM categories WHERE LOWER(category_name) = LOWER(?) AND (user_id = ? OR user_id IS NULL)");
+        $check->bind_param("si", $name, $userId);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            return ["success" => false, "message" => "Category '$name' already exists!"];
+        }
+
+        // 2. Insert if not exists
+        $stmt = $this->conn->prepare("INSERT INTO categories (user_id, category_name) VALUES (?, ?)");
+        $stmt->bind_param("is", $userId, $name);
+        if ($stmt->execute()) {
+            return ["success" => true, "id" => $stmt->insert_id, "name" => $name];
+        }
+        return ["success" => false, "message" => "Database error occurred"];
+    }
+
+    public function addSubCategory($userId, $categoryId, $name) {
+        // 1. Check for Duplicate Sub-Category inside the specific Category
+        $check = $this->conn->prepare("SELECT id FROM sub_categories WHERE category_id = ? AND LOWER(name) = LOWER(?) AND (user_id = ? OR user_id IS NULL)");
+        $check->bind_param("isi", $categoryId, $name, $userId);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            return ["success" => false, "message" => "Sub-category '$name' already exists in this category!"];
+        }
+
+        // 2. Insert if not exists
+        $stmt = $this->conn->prepare("INSERT INTO sub_categories (user_id, category_id, name) VALUES (?, ?, ?)");
+        $stmt->bind_param("iis", $userId, $categoryId, $name);
+        if ($stmt->execute()) {
+            return ["success" => true, "id" => $stmt->insert_id, "name" => $name];
+        }
+        return ["success" => false, "message" => "Database error occurred"];
+    }
+}
+?>
+</file>
+
+<file path="models/Family.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Family {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    // Check if user is a parent
+    public function isParent($userId) {
+        $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        return $user && $user['role'] === 'parent';
+    }
+
+    // 1. Parent requests to link an existing student account
+    public function requestLink($parentId, $studentEmail) {
+        $stmt = $this->conn->prepare("SELECT id, role FROM users WHERE email = ?");
+        $stmt->bind_param("s", $studentEmail);
+        $stmt->execute();
+        $student = $stmt->get_result()->fetch_assoc();
+
+        if (!$student) return ["success" => false, "message" => "No account found with that email."];
+        if ($student['role'] !== 'student') return ["success" => false, "message" => "You can only link student accounts."];
+
+        $studentId = $student['id'];
+
+        $check = $this->conn->prepare("SELECT id, status FROM family_links WHERE parent_id = ? AND student_id = ?");
+        $check->bind_param("ii", $parentId, $studentId);
+        $check->execute();
+        $existing = $check->get_result()->fetch_assoc();
+
+        if ($existing) {
+            if ($existing['status'] === 'ACTIVE') return ["success" => false, "message" => "Already linked to this student."];
+            return ["success" => false, "message" => "Link request already pending."];
+        }
+
+        $insert = $this->conn->prepare("INSERT INTO family_links (parent_id, student_id, status) VALUES (?, ?, 'PENDING')");
+        $insert->bind_param("ii", $parentId, $studentId);
+        
+        if ($insert->execute()) return ["success" => true, "message" => "Link request sent to student."];
+        return ["success" => false, "message" => "Database error."];
+    }
+
+    // 2. Student views pending requests
+    public function getPendingRequests($studentId) {
+        $stmt = $this->conn->prepare("
+            SELECT f.id as link_id, u.first_name, u.last_name, u.email, f.created_at
+            FROM family_links f
+            JOIN users u ON f.parent_id = u.id
+            WHERE f.student_id = ? AND f.status = 'PENDING'
+        ");
+        $stmt->bind_param("i", $studentId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // 3. Student accepts or rejects request
+    public function respondToRequest($studentId, $linkId, $action) {
+        if ($action === 'ACCEPT') {
+            $stmt = $this->conn->prepare("UPDATE family_links SET status = 'ACTIVE' WHERE id = ? AND student_id = ?");
+            $stmt->bind_param("ii", $linkId, $studentId);
+            return $stmt->execute();
+        } elseif ($action === 'REJECT') {
+            $stmt = $this->conn->prepare("DELETE FROM family_links WHERE id = ? AND student_id = ?");
+            $stmt->bind_param("ii", $linkId, $studentId);
+            return $stmt->execute();
+        }
+        return false;
+    }
+
+    // 4. Parent views their active students
+    public function getLinkedStudents($parentId) {
+        $stmt = $this->conn->prepare("
+            SELECT u.id, u.first_name, u.last_name, u.email, f.status
+            FROM family_links f
+            JOIN users u ON f.student_id = u.id
+            WHERE f.parent_id = ? AND f.status = 'ACTIVE'
+        ");
+        $stmt->bind_param("i", $parentId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Verify if a parent is actually linked to a specific student
+    public function isLinked($parentId, $studentId) {
+        $stmt = $this->conn->prepare("
+            SELECT id FROM family_links 
+            WHERE parent_id = ? AND student_id = ? AND status = 'ACTIVE'
+        ");
+        $stmt->bind_param("ii", $parentId, $studentId);
+        $stmt->execute();
+        return $stmt->get_result()->num_rows > 0;
+    }
+
+    // 5. Parent UNLINKS a student
+    public function unlinkStudent($parentId, $studentId) {
+        $stmt = $this->conn->prepare("DELETE FROM family_links WHERE parent_id = ? AND student_id = ?");
+        $stmt->bind_param("ii", $parentId, $studentId);
+        return $stmt->execute();
+    }
+
+    // 6. Student UNLINKS a parent
+    public function unlinkParent($studentId, $parentId) {
+        $stmt = $this->conn->prepare("DELETE FROM family_links WHERE student_id = ? AND parent_id = ?");
+        $stmt->bind_param("ii", $studentId, $parentId);
+        return $stmt->execute();
+    }
+}
+?>
+</file>
+
+<file path="models/Income.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Income {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function add($user_id, $source, $amount, $date, $description) {
+        $stmt = $this->conn->prepare("INSERT INTO incomes (user_id, source, amount, date, description) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("isdss", $user_id, $source, $amount, $date, $description);
+        if ($stmt->execute()) {
+            return ["success" => true, "id" => $stmt->insert_id];
+        }
+        return ["success" => false];
+    }
+
+    public function getAll($user_id, $start = null, $end = null) {
+        $sql = "SELECT * FROM incomes WHERE user_id = ?";
+        if ($start && $end) $sql .= " AND date BETWEEN ? AND ?";
+        $sql .= " ORDER BY date DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        if ($start && $end) $stmt->bind_param("iss", $user_id, $start, $end);
+        else $stmt->bind_param("i", $user_id);
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function update($id, $user_id, $source, $amount, $date, $description) {
+        $stmt = $this->conn->prepare("UPDATE incomes SET source=?, amount=?, date=?, description=? WHERE id=? AND user_id=?");
+        $stmt->bind_param("sdssii", $source, $amount, $date, $description, $id, $user_id);
+        return $stmt->execute();
+    }
+
+    public function delete($id, $user_id) {
+        $stmt = $this->conn->prepare("DELETE FROM incomes WHERE id=? AND user_id=?");
+        $stmt->bind_param("ii", $id, $user_id);
+        return $stmt->execute();
+    }
+}
+?>
+</file>
+
+<file path="api/auth/login.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/User.php';
+require_once '../../utils/auth.php';
+
+$data = json_decode(file_get_contents("php://input"), true);
+$email = $data['email'] ?? '';
+$password = $data['password'] ?? '';
+
+if(empty($email) || empty($password)) {
+    echo json_encode(["success" => false, "message" => "Email and password required"]);
+    exit;
+}
+
+$userModel = new User($conn);
+$result = $userModel->login($email, $password);
+
+if ($result['success']) {
+    $user = $result['user'];
+    $token = generateToken($user['id']);
+    
+    echo json_encode([
+        "success" => true,
+        "message" => "Login successful",
+        "token" => $token,
+        "user" => [
+            "id" => $user['id'],
+            "name" => $user['first_name'] . ' ' . $user['last_name'],
+            "email" => $user['email'],
+            "role" => $user['role'] // NEW: Pass the role back to React
+        ]
+    ]);
+} else {
+    echo json_encode($result);
+}
+?>
+</file>
+
+<file path="api/category/addCategory.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Category.php';
+require_once '../../models/TransactionLog.php'; // Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+$name = trim($data['name'] ?? '');
+
+if (empty($name)) sendResponse(false, "Category name is required");
+
+$category = new Category($conn);
+$result = $category->add($userId, $name);
+
+if ($result['success']) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "ADDED_CATEGORY", "Created new category: $name");
+
+    sendResponse(true, "Category added successfully", [
+        "id" => $result['id'],
+        "name" => $result['name'], 
+        "category_name" => $result['name'],
+        "user_id" => $userId
+    ]);
+} else {
+    sendResponse(false, $result['message']);
+}
+?>
+</file>
+
+<file path="api/expense/deleteExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Expense.php';
+require_once '../../models/TransactionLog.php'; // Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) $data = $_POST;
+
+$id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+
+if (!$id) {
+    sendResponse(false, "Invalid expense ID");
+}
+
+$expense = new Expense($conn);
+$result = $expense->delete($id, $userId);
+
+if ($result) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "DELETED_EXPENSE", "Deleted expense ID: $id");
+
+    sendResponse(true, "Expense deleted successfully");
+} else {
+    sendResponse(false, "Failed to delete expense");
+}
+?>
+</file>
+
+<file path="api/expense/getAllExpenses.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+$startDate = $_GET['start_date'] ?? null;
+$endDate = $_GET['end_date'] ?? null;
+
+$sql = "
+    SELECT 
+        e.id, 
+        e.amount, 
+        e.date, 
+        e.description, 
+        e.category_id,
+        c.category_name, 
+        e.sub_category_id,
+        s.name as sub_category_name,
+        (SELECT GROUP_CONCAT(file_path SEPARATOR ',') FROM expense_bills WHERE expense_id = e.id) as bills
+    FROM expenses e
+    JOIN categories c ON e.category_id = c.id
+    LEFT JOIN sub_categories s ON e.sub_category_id = s.id
+    WHERE e.user_id = ? 
+";
+
+if ($startDate && $endDate) {
+    $sql .= " AND e.date BETWEEN ? AND ? ";
+}
+
+$sql .= " ORDER BY e.date DESC, e.id DESC";
+
+$stmt = $conn->prepare($sql);
+
+if ($startDate && $endDate) {
+    $stmt->bind_param("iss", $userId, $startDate, $endDate);
+} else {
+    $stmt->bind_param("i", $userId);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
+
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    // Parse the comma-separated string into an actual array
+    if ($row['bills']) {
+        $row['bills'] = explode(',', $row['bills']);
+    } else {
+        $row['bills'] = [];
+    }
+    
+    $data[] = $row;
+}
+
+echo json_encode(["status" => true, "data" => $data]);
+?>
+</file>
+
+<file path="api/user/changePassword.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; 
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+require_once '../../utils/mailer.php'; // Import the mailer function
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$currentPass = $data['current_password'] ?? '';
+$newPass = $data['new_password'] ?? '';
+
+if (empty($currentPass) || strlen($newPass) < 6) {
+    sendResponse(false, "Invalid input. New password must be 6+ chars.");
+}
+
+// Ensure we fetch email, first_name, and last_name along with the password
+$stmt = $conn->prepare("SELECT email, first_name, last_name, password FROM users WHERE id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+
+if (!password_verify($currentPass, $user['password'])) {
+    sendResponse(false, "Current password is incorrect");
+}
+
+$newHash = password_hash($newPass, PASSWORD_DEFAULT);
+$update = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+$update->bind_param("si", $newHash, $userId);
+
+if ($update->execute()) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "SECURITY_UPDATE", "Password changed successfully");
+
+    // --- NEW: SEND SECURITY ALERT EMAIL ---
+    $fullName = $user['first_name'] . ' ' . $user['last_name'];
+    $subject = "Security Alert: Password Changed";
+    $body = "
+        <div style='font-family: Arial, sans-serif; color: #333;'>
+            <h2>Hello {$user['first_name']},</h2>
+            <p>The password for your Expense Tracker account (<b>{$user['email']}</b>) was recently changed.</p>
+            <p>If you made this change, you don't need to do anything. If you did <b>not</b> make this change, please contact your administrator immediately or reset your password.</p>
+            <br>
+            <p>Stay secure,<br>Expense Tracker Security Team</p>
+        </div>
+    ";
+    
+    sendEmail($user['email'], $fullName, $subject, $body);
+
+    sendResponse(true, "Password changed successfully");
+} else {
+    sendResponse(false, "Failed to change password");
+}
+?>
+</file>
+
+<file path="api/budget/getBudget.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Budget.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$type = $_GET['type'] ?? 'Monthly'; 
+$month = $_GET['month'] ?? date('m');
+$year = $_GET['year'] ?? date('Y');
+
+// 1. If Monthly, check if a specific plan exists in the monthly_budgets table
+if ($type === 'Monthly') {
+    $stmtPlan = $conn->prepare("SELECT amount FROM monthly_budgets WHERE user_id = ? AND month = ? AND year = ?");
+    $stmtPlan->bind_param("iii", $userId, $month, $year);
+    $stmtPlan->execute();
+    $planRes = $stmtPlan->get_result()->fetch_assoc();
+
+    if ($planRes && $planRes['amount'] > 0) {
+        sendResponse(true, "Specific monthly budget fetched", [
+            'amount' => $planRes['amount'], 
+            'type' => 'Monthly',
+            'source' => 'monthly_plan'
+        ]);
+        exit; // Stop execution, we found our specific budget
+    }
+}
+
+// 2. Fallback to general budgets table (or for Weekly/Yearly types)
+$stmt = $conn->prepare("SELECT * FROM budgets WHERE user_id = ? AND type = ? ORDER BY id DESC LIMIT 1");
+$stmt->bind_param("is", $userId, $type);
+$stmt->execute();
+$data = $stmt->get_result()->fetch_assoc();
+
+if ($data) {
+    $data['source'] = 'general_budget';
+    sendResponse(true, "General budget fetched", $data);
+} else {
+    sendResponse(true, "No budget found", ['amount' => 0, 'type' => $type, 'source' => 'none']);
+}
+?>
+</file>
+
+<file path="api/budget/updateBudget.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/TransactionLog.php'; // Add this
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$id = $data['id'] ?? 0;
+$amount = $data['amount'] ?? 0;
+$type = $data['type'] ?? 'Monthly';
+
+if (!$id || !$amount) sendResponse(false, "Invalid Input");
+
+$stmt = $conn->prepare("UPDATE budgets SET amount = ?, type = ? WHERE id = ? AND user_id = ?");
+$stmt->bind_param("dsii", $amount, $type, $id, $userId);
+
+if ($stmt->execute()) {
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_BUDGET", "Changed $type budget limit to NPR $amount");
+
+    sendResponse(true, "Budget updated successfully");
+} else {
+    sendResponse(false, "Failed to update");
+}
+?>
+</file>
+
+<file path="api/expense/updateExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Expense.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+// Support both JSON and FormData
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) $data = $_POST;
+
+$id = filter_var($data['id'] ?? 0, FILTER_VALIDATE_INT);
+$category_id = filter_var($data['category_id'] ?? 0, FILTER_VALIDATE_INT);
+$amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
+$date = filter_var($data['date'] ?? '', FILTER_SANITIZE_STRING);
+$description = filter_var($data['description'] ?? '', FILTER_SANITIZE_STRING);
+
+if (!$id || !$category_id || !$amount || !$date) {
+    sendResponse(false, "Invalid input. ID, Category, Amount, and Date required.");
+}
+
+$expense = new Expense($conn);
+$result = $expense->update($id, $userId, $category_id, $amount, $date, $description);
+
+if ($result) {
+
+    // --- NEW: HANDLE UPDATED FILE UPLOADS ---
+    if (isset($_FILES['bills']) && !empty($_FILES['bills']['name'][0])) {
+        
+        // 1. Delete old bills from Database to avoid clutter (Optional: you could also unlink/delete physical files here)
+        $del = $conn->prepare("DELETE FROM expense_bills WHERE expense_id = ?");
+        $del->bind_param("i", $id);
+        $del->execute();
+
+        // 2. Upload new files
+        $uploadDir = '../../uploads/bills/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        
+        foreach ($_FILES['bills']['tmp_name'] as $key => $tmpName) {
+            $fileName = time() . '_' . basename($_FILES['bills']['name'][$key]);
+            $targetPath = $uploadDir . $fileName;
+            
+            if (move_uploaded_file($tmpName, $targetPath)) {
+                $dbPath = 'uploads/bills/' . $fileName;
+                $stmt = $conn->prepare("INSERT INTO expense_bills (expense_id, file_path) VALUES (?, ?)");
+                $stmt->bind_param("is", $id, $dbPath);
+                $stmt->execute();
+            }
+        }
+    }
+    // --- END FILE UPLOAD LOGIC ---
+
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "UPDATED_EXPENSE", "Updated expense ID: $id (Amount: $amount)");
+
+    sendResponse(true, "Expense updated successfully");
+} else {
+    sendResponse(false, "Failed to update expense");
+}
+?>
+</file>
+
+<file path="models/expense.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Expense {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function add($user_id, $category_id, $amount, $date, $description, $sub_category_id = NULL, $source = "Cash") {
+        $stmt = $this->conn->prepare("
+            INSERT INTO expenses (user_id, category_id, sub_category_id, amount, date, description, source) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("iiidsss", $user_id, $category_id, $sub_category_id, $amount, $date, $description, $source);
+        
+        // CHANGED: Return the new ID instead of a boolean
+        if ($stmt->execute()) {
+            return $stmt->insert_id; 
+        }
+        return false;
+    }
+
+    // Get all expenses for a user (Standard model method, though API uses custom query)
+    public function getAll($user_id) {
+        $stmt = $this->conn->prepare("
+            SELECT e.id, e.amount, e.date, e.description, c.category_name, c.id as category_id
+            FROM expenses e
+            JOIN categories c ON e.category_id = c.id
+            WHERE e.user_id = ?
+            ORDER BY e.date DESC
+        ");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Update expense
+    public function update($id, $user_id, $category_id, $amount, $date, $description) {
+        $stmt = $this->conn->prepare("
+            UPDATE expenses 
+            SET category_id=?, amount=?, date=?, description=? 
+            WHERE id=? AND user_id=?
+        ");
+        $stmt->bind_param("idssii", $category_id, $amount, $date, $description, $id, $user_id);
+        return $stmt->execute();
+    }
+
+    // Delete expense
+    public function delete($id, $user_id) {
+        $stmt = $this->conn->prepare("
+            DELETE FROM expenses 
+            WHERE id=? AND user_id=?
+        ");
+        $stmt->bind_param("ii", $id, $user_id);
+        return $stmt->execute();
+    }
+}
+?>
+</file>
+
+<file path="models/FutureExpense.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class FutureExpense {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    // Add to future queue
+public function add($user_id, $category_id, $amount, $date, $description, $sub_category_id, $source) {
+    $stmt = $this->conn->prepare("
+        INSERT INTO future_expenses (user_id, category_id, sub_category_id, amount, date, description, source, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+    ");
+    // Handle NULL for sub_category_id
+    $sub_cat = !empty($sub_category_id) ? $sub_category_id : NULL;
+    $stmt->bind_param("iiidsss", $user_id, $category_id, $sub_cat, $amount, $date, $description, $source);
+    return $stmt->execute();
+}
+
+    // Get expenses that are due (Date is today or passed) and still PENDING
+    public function getDueExpenses($user_id) {
+        $today = date('Y-m-d');
+        $stmt = $this->conn->prepare("
+            SELECT f.*, c.category_name 
+            FROM future_expenses f
+            JOIN categories c ON f.category_id = c.id
+            WHERE f.user_id = ? AND f.status = 'PENDING' AND f.date <= ?
+        ");
+        $stmt->bind_param("is", $user_id, $today);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Confirm: Move from Future -> Main Expenses
+    public function confirm($id, $userId, $updatedData = null) {
+        $stmt = $this->conn->prepare("SELECT * FROM future_expenses WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $id, $userId);
+        $stmt->execute();
+        $orig = $stmt->get_result()->fetch_assoc();
+
+        if (!$orig) return false;
+
+        $cat  = $updatedData['category_id'] ?? $orig['category_id'];
+        $sub  = $updatedData['sub_category_id'] ?? $orig['sub_category_id'];
+        $amt  = $updatedData['amount'] ?? $orig['amount'];
+        $date = $updatedData['date'] ?? date('Y-m-d'); 
+        $desc = $updatedData['description'] ?? $orig['description'];
+        $src  = $updatedData['source'] ?? $orig['source'];
+
+        $this->conn->begin_transaction();
+        try {
+            $ins = $this->conn->prepare("INSERT INTO expenses (user_id, category_id, sub_category_id, amount, date, description, source) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $ins->bind_param("iiidsss", $userId, $cat, $sub, $amt, $date, $desc, $src);
+            $ins->execute();
+
+            $upd = $this->conn->prepare("UPDATE future_expenses SET status = 'PROCESSED' WHERE id = ?");
+            $upd->bind_param("i", $id);
+            $upd->execute();
+
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            return false;
+        }
+    }
+
+    public function getAllPending($user_id) {
+        $stmt = $this->conn->prepare("
+            SELECT f.*, c.category_name 
+            FROM future_expenses f
+            JOIN categories c ON f.category_id = c.id
+            WHERE f.user_id = ? AND f.status = 'PENDING'
+            ORDER BY f.date ASC
+        ");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function update($id, $user_id, $category_id, $amount, $date, $description) {
+        $stmt = $this->conn->prepare("
+            UPDATE future_expenses 
+            SET category_id = ?, amount = ?, date = ?, description = ? 
+            WHERE id = ? AND user_id = ? AND status = 'PENDING'
+        ");
+        $stmt->bind_param("idssii", $category_id, $amount, $date, $description, $id, $user_id);
+        return $stmt->execute();
+    }
+}
+</file>
+
+<file path="models/user.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class User {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function register($email, $password, $role, $first_name, $middle_name, $last_name, $bank_name = '', $bank_account_no = '') {
+        $stmt = $this->conn->prepare("SELECT id FROM users WHERE email=?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            return ["success" => false, "message" => "Email already registered"];
+        }
+
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        
+        // ADDED ROLE TO INSERT STATEMENT
+        $stmt = $this->conn->prepare("
+            INSERT INTO users (email, password, role, first_name, middle_name, last_name, bank_name, bank_account_no) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssssssss", $email, $hashedPassword, $role, $first_name, $middle_name, $last_name, $bank_name, $bank_account_no);
+        
+        if ($stmt->execute()) {
+            return ["success" => true, "message" => "Registration successful", "user_id" => $stmt->insert_id];
+        }
+        return ["success" => false, "message" => "Registration failed"];
+    }
+
+    public function login($email, $password) {
+        $stmt = $this->conn->prepare("SELECT * FROM users WHERE email=?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        if ($user && password_verify($password, $user['password'])) {
+            return ["success" => true, "user" => $user];
+        }
+        return ["success" => false, "message" => "Invalid email or password"];
+    }
+}
+?>
+</file>
+
+<file path="models/budget.php">
+<?php
+require_once __DIR__ . '/../config/db.php';
+
+class Budget {
+    private $conn;
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    public function setBudget($user_id, $amount, $type = "Monthly") {
+        $stmt = $this->conn->prepare("SELECT type, amount FROM budgets WHERE user_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $existing = [];
+        while($row = $result->fetch_assoc()) {
+            $existing[$row['type']] = (float)$row['amount'];
+        }
+
+        if ($type === 'Weekly') {
+            if (isset($existing['Monthly']) && $amount > $existing['Monthly']) {
+                return [
+                    "success" => false, 
+                    "message" => "Weekly budget ($amount) cannot exceed Monthly budget (" . $existing['Monthly'] . ")"
+                ];
+            }
+            if (isset($existing['Yearly']) && $amount > $existing['Yearly']) {
+                return [
+                    "success" => false, 
+                    "message" => "Weekly budget cannot exceed Yearly budget (" . $existing['Yearly'] . ")"
+                ];
+            }
+        } 
+        elseif ($type === 'Monthly') {
+            if (isset($existing['Weekly']) && $amount < $existing['Weekly']) {
+                return [
+                    "success" => false, 
+                    "message" => "Monthly budget ($amount) cannot be less than Weekly budget (" . $existing['Weekly'] . ")"
+                ];
+            }
+            if (isset($existing['Yearly']) && $amount > $existing['Yearly']) {
+                return [
+                    "success" => false, 
+                    "message" => "Monthly budget cannot exceed Yearly budget (" . $existing['Yearly'] . ")"
+                ];
+            }
+        } 
+        elseif ($type === 'Yearly') {
+            if (isset($existing['Monthly']) && $amount < $existing['Monthly']) {
+                return [
+                    "success" => false, 
+                    "message" => "Yearly budget cannot be less than Monthly budget (" . $existing['Monthly'] . ")"
+                ];
+            }
+            if (isset($existing['Weekly']) && $amount < $existing['Weekly']) {
+                 return [
+                    "success" => false, 
+                    "message" => "Yearly budget cannot be less than Weekly budget (" . $existing['Weekly'] . ")"
+                ];
+            }
+        }
+
+        $check = $this->conn->prepare("SELECT id FROM budgets WHERE user_id = ? AND type = ?");
+        $check->bind_param("is", $user_id, $type);
+        $check->execute();
+        $checkRes = $check->get_result();
+
+        if ($checkRes->num_rows > 0) {
+            $stmt = $this->conn->prepare("UPDATE budgets SET amount = ?, created_at = NOW() WHERE user_id = ? AND type = ?");
+            $stmt->bind_param("dis", $amount, $user_id, $type);
+        } else {
+            $stmt = $this->conn->prepare("INSERT INTO budgets (user_id, amount, type) VALUES (?, ?, ?)");
+            $stmt->bind_param("ids", $user_id, $amount, $type);
+        }
+
+        if ($stmt->execute()) {
+            return ["success" => true, "message" => "Budget set successfully"];
+        } else {
+            return ["success" => false, "message" => "Database error occurred"];
+        }
+    }
+          public function setMonthlyAmount($user_id, $year, $month, $w1, $w2, $w3, $w4) {
+        // Calculate Total automatically
+        $totalAmount = $w1 + $w2 + $w3 + $w4;
+
+        $stmt = $this->conn->prepare("
+            INSERT INTO monthly_budgets (user_id, year, month, amount, week1, week2, week3, week4) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+            ON DUPLICATE KEY UPDATE 
+                amount = VALUES(amount),
+                week1 = VALUES(week1),
+                week2 = VALUES(week2),
+                week3 = VALUES(week3),
+                week4 = VALUES(week4)
+        ");
+        $stmt->bind_param("iiiddddd", $user_id, $year, $month, $totalAmount, $w1, $w2, $w3, $w4);
+        
+        if ($stmt->execute()) {
+            return ["success" => true, "message" => "Budget updated"];
+        }
+        return ["success" => false, "message" => "Database error"];
+    }
+
+    public function getBudget($user_id, $type) {
+        $stmt = $this->conn->prepare("SELECT * FROM budgets WHERE user_id = ? AND type = ? ORDER BY id DESC LIMIT 1");
+        $stmt->bind_param("is", $user_id, $type);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+     public function getYearlyBreakdown($user_id, $year) {
+        $stmt = $this->conn->prepare("SELECT month, amount, week1, week2, week3, week4 FROM monthly_budgets WHERE user_id = ? AND year = ?");
+        $stmt->bind_param("ii", $user_id, $year);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $data = [];
+        while($row = $result->fetch_assoc()) {
+            $data[$row['month']] = [
+                "amount" => (float)$row['amount'],
+                "week1" => (float)$row['week1'],
+                "week2" => (float)$row['week2'],
+                "week3" => (float)$row['week3'],
+                "week4" => (float)$row['week4'],
+            ];
+        }
+        
+        // Fill missing months
+        $finalData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $existing = $data[$i] ?? null;
+            $finalData[] = [
+                "month" => $i,
+                "amount" => $existing ? $existing['amount'] : 0,
+                "week1" => $existing ? $existing['week1'] : 0,
+                "week2" => $existing ? $existing['week2'] : 0,
+                "week3" => $existing ? $existing['week3'] : 0,
+                "week4" => $existing ? $existing['week4'] : 0,
+            ];
+        }
+        
+        return $finalData;
+    }
+}
+?>
+</file>
+
+<file path="api/auth/register.php">
+<?php
+require_once "../../config/db.php";
+require_once "../../models/User.php";
+require_once "../../utils/mailer.php"; // Import the mailer function
+
+function sendResponse($success, $message) {
+    echo json_encode(["success" => $success, "message" => $message]);
+    exit;
+}
+
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) $data = $_POST;
+
+$email      = filter_var(trim($data['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+$password   = trim($data['password'] ?? '');
+$role       = trim($data['role'] ?? 'student');
+$first_name = trim($data['first_name'] ?? '');
+$last_name  = trim($data['last_name'] ?? '');
+$mid_name   = trim($data['middle_name'] ?? '');
+$bank_name  = trim($data['bank_name'] ?? '');
+$bank_acc   = trim($data['bank_account_no'] ?? '');
+
+// Ensure role is valid
+if (!in_array($role, ['student', 'parent'])) {
+    $role = 'student';
+}
+
+if (empty($email) || empty($password) || empty($first_name) || empty($last_name)) {
+    sendResponse(false, "Name, Email, and Password are required.");
+}
+
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    sendResponse(false, "Invalid email address format.");
+}
+
+if (strlen($password) < 6) {
+    sendResponse(false, "Password must be at least 6 characters long.");
+}
+
+$userModel = new User($conn);
+$result = $userModel->register($email, $password, $role, $first_name, $mid_name, $last_name, $bank_name, $bank_acc);
+
+// --- NEW: SEND WELCOME EMAIL ---
+if ($result['success']) {
+    $subject = "Welcome to Expense Tracker!";
+    $body = "
+        <div style='font-family: Arial, sans-serif; color: #333;'>
+            <h2>Hello $first_name $last_name,</h2>
+            <p>Welcome to <b>Expense Tracker</b>!</p>
+            <p>Your account has been successfully created as a <b>" . ucfirst($role) . "</b>.</p>
+            <p>You can now log in and start tracking your finances.</p>
+            <br>
+            <p>Best Regards,<br>Expense Tracker Team</p>
+        </div>
+    ";
+    
+    // Call the email function
+    sendEmail($email, "$first_name $last_name", $subject, $body);
+}
+
+echo json_encode($result);
+?>
+</file>
+
+<file path="api/budget/setbudget.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Budget.php';
+require_once '../../models/TransactionLog.php'; // Import Logger
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+$data = json_decode(file_get_contents("php://input"), true);
+
+$amount = filter_var($data['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
+$type = filter_var($data['type'] ?? 'Monthly', FILTER_SANITIZE_STRING);
+
+if ($amount === false || $amount < 0) {
+    sendResponse(false, "Invalid budget amount");
+}
+
+$budget = new Budget($conn);
+// This updates the general `budgets` table
+$result = $budget->setBudget($userId, $amount, $type);
+
+if ($result['success']) {
+    
+    // NEW: If type is Monthly, sync with the specific monthly_budgets table 
+    // to ensure the dashboard instantly reflects the change for the current filter.
+    if ($type === 'Monthly') {
+        $month = $data['month'] ?? date('m');
+        $year = $data['year'] ?? date('Y');
+        
+        $stmtSync = $conn->prepare("
+            INSERT INTO monthly_budgets (user_id, year, month, amount) 
+            VALUES (?, ?, ?, ?) 
+            ON DUPLICATE KEY UPDATE amount = VALUES(amount)
+        ");
+        $stmtSync->bind_param("iiid", $userId, $year, $month, $amount);
+        $stmtSync->execute();
+    }
+
+    // LOGGING
+    $logger = new TransactionLog($conn);
+    $logger->log($userId, "SET_BUDGET", "Set $type budget to $amount");
+
+    sendResponse(true, $result['message']);
+} else {
+    sendResponse(false, $result['message']);
+}
+?>
+</file>
+
+<file path="api/expense/addExpense.php">
+<?php
+require_once '../../config/db.php';
+require_once '../../models/Expense.php';
+require_once '../../models/FutureExpense.php';
+require_once '../../models/TransactionLog.php';
+require_once '../../utils/response.php';
+require_once '../../utils/auth.php';
+
+$userId = authenticate();
+
+// Handle both JSON and Form-Data (for bill uploads)
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) $data = $_POST;
+
+$category_id = $data['category_id'] ?? 0;
+$sub_category_id = !empty($data['sub_category_id']) ? $data['sub_category_id'] : NULL;
+$amount = $data['amount'] ?? 0;
+$date = $data['date'] ?? '';
+$description = $data['description'] ?? '';
+$source = $data['source'] ?? 'Cash';
+
+if (!$category_id || !$amount || !$date) {
+    sendResponse(false, "Required fields missing: Category, Amount, and Date.");
+}
+
+$today = date('Y-m-d');
+$logger = new TransactionLog($conn);
+
+if ($date > $today) {
+    // --- SCHEDULE FOR FUTURE ---
+    $future = new FutureExpense($conn);
+    $result = $future->add($userId, $category_id, $amount, $date, $description, $sub_category_id, $source);
+    
+    if ($result) {
+        $logger->log($userId, "SCHEDULED_EXPENSE", "Scheduled NPR $amount for $date");
+        sendResponse(true, "Expense scheduled for $date");
+    } else {
+        sendResponse(false, "Failed to schedule expense.");
+    }
+} else {
+    // --- ADD AS ACTUAL EXPENSE ---
+    $expense = new Expense($conn);
+    $expenseId = $expense->add($userId, $category_id, $amount, $date, $description, $sub_category_id, $source);
+
+    if ($expenseId) {
+        
+        // --- NEW: HANDLE FILE UPLOADS ---
+        if (isset($_FILES['bills']) && !empty($_FILES['bills']['name'][0])) {
+            $uploadDir = '../../uploads/bills/';
+            
+            // Create folder if it doesn't exist
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            
+            // Loop through all uploaded files
+            foreach ($_FILES['bills']['tmp_name'] as $key => $tmpName) {
+                // Generate a unique file name to prevent overwriting
+                $fileName = time() . '_' . basename($_FILES['bills']['name'][$key]);
+                $targetPath = $uploadDir . $fileName;
+                
+                // Move file and save to Database
+                if (move_uploaded_file($tmpName, $targetPath)) {
+                    $dbPath = 'uploads/bills/' . $fileName;
+                    $stmt = $conn->prepare("INSERT INTO expense_bills (expense_id, file_path) VALUES (?, ?)");
+                    $stmt->bind_param("is", $expenseId, $dbPath);
+                    $stmt->execute();
+                }
+            }
+        }
+        // --- END FILE UPLOAD LOGIC ---
+
+        $logger->log($userId, "ADDED_EXPENSE", "Added NPR $amount via $source");
+        sendResponse(true, "Expense added successfully");
+    } else {
+        sendResponse(false, "Failed to add expense");
+    }
+}
+?>
+</file>
+
+<file path="README.md">
+# 4th-sem-project-BE
+
+Step 1: Clone this repository if not created
+
+````bash
+
+git clone https://github.com/questraj/4th-sem-project-BE.git
+
+````
+Step 2: If already cloned then run 
+````bash 
+
+git pull
+
+````
+This will update your code to the latest version that is pushed to origin. Note: It is always a good practice to run git pull before working on a project
+
+Step 3: Open the repository in VS code or your text editor and run 
+```` bash
+
+php -v
+
+````
+If you get an error saying php is not recognized add the folder that contains php.exe to your environment
+
+Step 4: If you have already created the database skip this step else Open XAMPP and run MYSQL and Apache and go to 
+
+````bash
+localhost/phpmyadmin
+````
+and create a new database called expense_tracker and in the SQL section paste this code and run
+
+````bash
+
+-- =============================================
+-- 1. DATABASE SETUP
+-- =============================================
+DROP DATABASE IF EXISTS expense_tracker;
+CREATE DATABASE expense_tracker;
+USE expense_tracker;
+
+-- =============================================
+-- 2. USERS TABLE (UPDATED WITH OTP COLUMNS)
+-- =============================================
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('student', 'parent', 'admin') NOT NULL DEFAULT 'student',
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    bank_name VARCHAR(100) DEFAULT NULL,
+    bank_account_no VARCHAR(50) DEFAULT NULL,
+    is_verified TINYINT(1) DEFAULT 0,   -- NEW: 0 = unverified, 1 = verified
+    otp VARCHAR(6) DEFAULT NULL,        -- NEW: Stores the 6-digit code
+    otp_expiry DATETIME DEFAULT NULL,   -- NEW: Stores when the OTP expires
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- 3. FAMILY LINKING
+-- =============================================
+CREATE TABLE family_links (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_id INT NOT NULL,
+    student_id INT NOT NULL,
+    status ENUM('PENDING', 'ACTIVE') DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_family_link (parent_id, student_id)
+);
+
+-- =============================================
+-- 4. LOGGING & AUDIT
+-- =============================================
+CREATE TABLE transaction_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- 5. CATEGORIES & SUB-CATEGORIES
+-- =============================================
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT DEFAULT NULL, 
+    category_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE sub_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT DEFAULT NULL,
+    category_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- 6. BUDGETING
+-- =============================================
+CREATE TABLE monthly_budgets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    year INT NOT NULL,
+    month INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    week1 DECIMAL(10, 2) DEFAULT 0,
+    week2 DECIMAL(10, 2) DEFAULT 0,
+    week3 DECIMAL(10, 2) DEFAULT 0,
+    week4 DECIMAL(10, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_month_year_budget (user_id, year, month)
+);
+
+CREATE TABLE category_budgets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_category (user_id, category_id)
+);
+
+CREATE TABLE budgets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(20) DEFAULT 'Monthly',
+    amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_budget_type (user_id, type)
+);
+
+-- =============================================
+-- 7. INCOME MODULE
+-- =============================================
+CREATE TABLE incomes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    source VARCHAR(100) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    date DATE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE monthly_income_plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    year INT NOT NULL,
+    month INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_month_year_income (user_id, year, month)
+);
+
+-- =============================================
+-- 8. EXPENSES
+-- =============================================
+CREATE TABLE future_expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
+    sub_category_id INT DEFAULT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    date DATE NOT NULL, 
+    description TEXT,
+    source VARCHAR(50) DEFAULT 'Cash',
+    status VARCHAR(20) DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
+    sub_category_id INT DEFAULT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    date DATE NOT NULL,
+    description TEXT,
+    source VARCHAR(50) DEFAULT 'Cash',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE recurring_expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
+    sub_category_id INT DEFAULT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    frequency ENUM('Weekly', 'Monthly', 'Yearly') NOT NULL,
+    start_date DATE NOT NULL,
+    next_due_date DATE NOT NULL,
+    description TEXT,
+    source VARCHAR(50) DEFAULT 'Cash',
+    status ENUM('ACTIVE', 'PAUSED', 'CANCELLED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE expense_bills (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    expense_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- 9. SEED DATA
+-- =============================================
+INSERT INTO categories (id, category_name) VALUES 
+(1, 'Food'), (2, 'Transport'), (3, 'Utilities'), (4, 'Entertainment'), 
+(5, 'Health'), (6, 'Shopping'), (7, 'Education');
+
+-- Add an admin user (Password: password). Set to is_verified = 1 automatically.
+INSERT INTO users (email, password, role, first_name, last_name, is_verified) VALUES 
+('admin@admin.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'System', 'Admin', 1);
+
+````
+Step 5: Run this in terminal to start server
+
+````bash
+php -S localhost:8000
+````
+</file>
+
+</files>
